@@ -1,61 +1,55 @@
 import re
 
-def parse_and_update_sales(lines, items, vip_sales, member_sales, total_sales):
-  pattern = re.compile(r'(\[VIP\])?\s*([\w]+)\s+buys\s+(\w+)\s+for\s+\$(\d+)')
+def analysis_string(string):
+    pattern = re.compile(r'(\[VIP\] )?(\w+) buys (\w+) for \$(\d+)')
+    vip_purchases = {}
+    member_purchases = {}
+    total_sales = {}
 
-  for line in lines:
-    match = pattern.match(line.strip())
-    if match:
-      is_vip = match.group(1) is not None
-      name = match.group(2)
-      item = match.group(3)
-      price = int(match.group(4))
+    for vip_status, name, item, price in pattern.findall(string):
+        price = int(price)
+        if vip_status:
+            if name not in vip_purchases:
+                vip_purchases[name] = {}
+            if item not in vip_purchases[name]:
+                vip_purchases[name][item] = 0
+            vip_purchases[name][item] += price
+        else:
+            if name not in member_purchases:
+                member_purchases[name] = {}
+            if item not in member_purchases[name]:
+                member_purchases[name][item] = 0
+            member_purchases[name][item] += price
+        if item not in total_sales:
+            total_sales[item] = 0
+        total_sales[item] += price
 
-      if item not in items:
-        items.append(item)
-        total_sales[item] = 0
+    content = "[VIP]\n"
+    for name, items in vip_purchases.items():
+        items_str = ', '.join([f"{item}: {price}" for item, price in items.items()])
+        content += f"{name} buys {items_str}\n"
 
-        for user_sales in vip_sales.values():
-           user_sales[item] = 0
-        for user_sales in member_sales.values():
-           user_sales[item] = 0
+    content += "\n[Member]\n"
+    for name, items in member_purchases.items():
+        items_str = ', '.join([f"{item}: {price}" for item, price in items.items()])
+        content += f"{name} buys {items_str}\n"
 
-      if is_vip:
-        if name not in vip_sales:
-          vip_sales[name] = {item_name: 0 for item_name in items}
-        vip_sales[name][item] += price
-      else:
-        if name not in member_sales:
-          member_sales[name] = {item_name: 0 for item_name in items}
-        member_sales[name][item] += price
+    content += "\n"
+    for item, total in total_sales.items():
+        content += f"Total {item} sales: {total}\n"
+    return content
 
-      total_sales[item] += price
+def open_file(path):
+    with open(path, 'r') as file:
+        log_data = file.read()
+    return log_data
 
-def format_sales(sales_dict):
-  result = []
-  for name, items in sales_dict.items():
-    sales = ", ".join([f"{item}: {amount}" for item, amount in items.items() if amount > 0])
-    result.append(f"{name} buys {sales}")
-  return result
+def save_file(path, string):
+    with open(path, 'w') as file:
+        file.write(string)
 
-def print_sales(vip_result, member_result, total_sales):
-  print("[VIP]")
-  for line in vip_result:
-    print(line)
-  print("\n[Member]")
-  for line in member_result:
-    print(line)
-  print("\nTotal sales")
-  for item, total in total_sales.items():
-    print(f"{item}: {total}")
-
-def main():
-  with open('./log.txt', 'r') as file:
-    lines = file.readlines()
-  items, vip_sales, member_sales, total_sales = [], {}, {}, {}
-  parse_and_update_sales(lines, items, vip_sales, member_sales, total_sales)
-  vip_result = format_sales(vip_sales)
-  member_result = format_sales(member_sales)
-  print_sales(vip_result, member_result, total_sales)
-
-main()
+if __name__ == '__main__':
+    log_data=open_file(r'H:\PY\week15\test\log.txt')
+    content=analysis_string(log_data)
+    print(content)
+    save_file(r'H:\PY\week15\test\Analysis_result.txt', content)
